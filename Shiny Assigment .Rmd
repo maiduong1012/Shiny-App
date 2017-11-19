@@ -1,0 +1,151 @@
+---
+title: "Diamond Price Prediction by Shiny App"
+author: "Mai Duong"
+date: "11/10/2017"
+output: html_document
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+### Purpose:
+#### Use Shiny to built an Shiny App:
+- To predict price of Diamond by Carat and X
+- To compare these two Models of prediction
+
+#### How does it work?
+- Change input value of carat and/or X, the two models will predict the price 
+
+## Layout 
+
+### Sidebar:  
+- Slider 1: To select the value of carat
+- Slider 2: To select the value of X 
+- Show/hide prediction line of two model
+
+### Main Panel:
+- Plots of 2 models
+- Value of prediction
+- Which model is better in prediction of price
+
+## Showtime  
+
+```{r, echo = FALSE}
+
+library(ggplot2)
+library(shiny)
+
+
+shinyApp(
+  
+  ui = fluidPage(
+    titlePanel("Predict Diamond Price"),
+  sidebarLayout(
+    sidebarPanel(
+      sliderInput("sliderCarat", "Carat", 0.2, 3.5, value = 0.7),
+      checkboxInput("showModel1", "Show/Hide Carat Model", value = TRUE),
+      sliderInput("sliderX", "X", 2.5, 10, value = 5),
+      checkboxInput("showModel2", "Show/Hide X^4 Model", value = TRUE),
+      tags$p("Click on Submit Button if you are ready"),
+      submitButton("Submit")
+    ),
+    mainPanel(
+      fluidRow(
+        column(2, align="right",
+               plotOutput(outputId = "plot1", width  = "500px",height = "400px"),  
+               plotOutput(outputId = "plot2", width  = "500px",height = "400px")
+        )),
+      h4("Predicted Price from Carat Model:"),
+      textOutput("pred1"),
+      h5("R-quare of Carat Model:"),
+      textOutput("R1"),
+      h4("Predicted Price from X^4 Model:"),
+      textOutput("pred2"),
+      h5("R-quare of X^4 Model:"),
+      textOutput("R2"),
+      h4("Model that predicts better: "),
+      textOutput("Better")
+    )
+  )
+  ),
+  
+  server = function(input, output) {
+  diamonds$x1 <- diamonds$x^4 #' create vector x1: x1=x^4
+  model1 <- lm(price ~ carat, data = diamonds) #' Model to predict price on carat input
+  model2 <- lm(price ~ x1, data = diamonds) #' Model to predict price on X input
+  my_data <- data.frame(diamonds$carat,diamonds$x,diamonds$price, diamonds$x1)
+   #' Reactive Input: sliderCarat
+  model1pred <- reactive({
+    caratInput <- input$sliderCarat
+    predict(model1, newdata = data.frame(carat = caratInput))
+  })
+  #' Reactive Input: sliderX
+  model2pred <- reactive({
+    xInput <- input$sliderX
+    predict(model2, newdata = data.frame(x = xInput, x1 = xInput^4))
+  })
+  
+  #' Output Carat Model 
+  output$plot1 <- renderPlot({
+    caratInput <- input$sliderCarat
+    
+    plot(diamonds$carat, diamonds$price, xlab = "Carat", 
+         ylab = "Price", 
+         xlim = c(0.2, 3.5), ylim = c(300, 20000))
+    if(input$showModel1){
+      abline(model1, col = "red", lwd = 2)
+    }
+    points(caratInput, model1pred(), col = "blue", pch = 16, cex = 2)
+  })
+  
+  #' Output X^4 Model
+  output$plot2 <- renderPlot({
+    xInput <- input$sliderX
+    
+    plot(diamonds$x1, diamonds$price, xlab = "X^4", 
+         ylab = "Price", 
+         xlim = c(40, 7000), ylim = c(300, 20000))
+    if(input$showModel1){
+      abline(model2, col = "red", lwd = 2)}
+    points(xInput^4, model2pred(), col = "blue", pch = 16, cex = 2)
+  })
+  
+  #' Out put predicted value of Carat model 
+  output$pred1 <- renderText({
+    model1pred()
+  })
+  # Output R-quare value of Carat Model
+  output$R1 <- renderText({
+    summary(model1)$r.squared
+  })
+  
+  #' Out put predicted value of X^4 model 
+  output$pred2 <- renderText({
+    model2pred()
+  })
+  # Output R-quare value of Carat Model
+  output$R2 <- renderText({
+    summary(model2)$r.squared
+  })
+  
+  #' Output Model that predict better based on R-Quare value
+  
+  output$Better <- renderText({ifelse(summary(model2)$r.squared > summary(model1)$r.squared,"X^4 Model","Carat Model")})
+  
+  },
+  
+  options = list(height = 500)
+)
+```
+
+
+## Reference
+### Code link: https://github.com/maiduong1012/Shiny-App
+### App link: https://maiduong.shinyapps.io/multilinear/
+
+
+
